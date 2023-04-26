@@ -383,12 +383,13 @@ class gap_buffer {
      *                    (i.e. [\p index, \p index + \p count) is removed).
      */
     constexpr void remove(int64_t index, int64_t count) {
+        [[assume(index >= 0)]];
         if (count >= 0) {
             count = std::min(count, size() - index);
             move_cursor_to(index + count);
         } else {
-            count = std::min(-count, index);
-            move_cursor_to(index);
+            count = std::min(-count, index + 1);
+            move_cursor_to(index + 1);
         }
         _gap.advance(-count);
     }
@@ -409,7 +410,7 @@ class gap_buffer {
      * @param[in]  count  The number of elements to be removed from the
      *                    end of the content.
      */
-    constexpr void remove_suffix(int64_t count) { remove(size(), -count); }
+    constexpr void remove_suffix(int64_t count) { remove(size() - 1, -count); }
 
 
     /**

@@ -10,10 +10,10 @@
 
 
 /**
- * @brief      Gets the first type out of variadic templates
+ * @brief      Gets the first type out of variadic templates.
  *
- * @tparam     T1    first type
- * @tparam     Ts    the rest
+ * @tparam     T     The first type.
+ * @tparam     Ts    The rest of the types.
  */
 template <class T, class... Ts>
 struct first {
@@ -22,7 +22,7 @@ struct first {
 
 
 /**
- * @brief      Gets the first type out of variadic templates
+ * @brief      Gets the first type out of variadic templates.
  *
  * @tparam     Ts          Types
  */
@@ -32,9 +32,9 @@ using first_t = typename first<Ts...>::type;
 
 
 /**
- * @brief      Checks if all types from Ts.. are the same
+ * @brief      Checks if all types from Ts... are the same.
  *
- * @tparam     Ts          Types
+ * @tparam     Ts          Input types.
  */
 template <typename... Ts>
 concept all_same =
@@ -44,7 +44,7 @@ concept all_same =
 /**
  * @brief      Concatanation view.
  *
- * @tparam     Vs         View types to be concatenated.
+ * @tparam     Vs         Types of views to be concatenated.
  */
 template <std::ranges::view... Vs>
 requires(sizeof...(Vs) >= 1) && (std::same_as<first_t<Vs...>, Vs> && ...)
@@ -106,7 +106,7 @@ inline constexpr auto concat(Vs&&... vs) {
 /**
  * @brief      This class describes a gap buffer.
  *
- * @tparam     T     Type held by the buffer.
+ * @tparam     T     The type held by the buffer.
  */
 template <typename T>
 class gap_buffer {
@@ -125,7 +125,7 @@ class gap_buffer {
     /**
      * @brief      Gets the current buffer size.
      *
-     * @return     Return the current buffer size.
+     * @return     The current buffer size.
      */
     constexpr int64_t buf_size() const { return _buf.size(); }
 
@@ -133,7 +133,7 @@ class gap_buffer {
     /**
      * @brief      Provides the indexes of the beginning and end of the gap.
      *
-     * @return     std::pair of beginning and end of the gap.
+     * @return     std::pair containing the beginning and the end of the gap.
      */
     constexpr auto gap_id() const {
         auto [gb, ge] = _gap;
@@ -151,7 +151,8 @@ class gap_buffer {
 
   private:
     /**
-     * @brief      Resizes the internal buffer.
+     * @brief      Resizes the internal buffer. Doubling size strategy is
+     *             applied.
      *
      * @param[in]  i     The size by which the buffer is to be extended. If
      *                   negative, nothing happens.
@@ -170,12 +171,14 @@ class gap_buffer {
 
 
     /**
-     * @brief      Moves the cursor (the left end of the gap) right.
+     * @brief      Moves the cursor (the left end of the gap) to the right.
+     *             Note that some enlarging might happen.
      *
      * @param[in]  count  We assume that \p count >= 0. The number of positions
      *                    by which the cursor is shifted right.
      */
     constexpr void move_cursor_right(int64_t count) {
+        [[assume(count >= 0)]];
         auto [gb, ge] = gap_id();
         enlarge_by_at_least(ge + count - buf_size());
         gap_t new_gap{_buf.begin() + gb + count, _buf.begin() + ge + count};
@@ -186,11 +189,13 @@ class gap_buffer {
 
     /**
      * @brief      Moves the cursor (the left end of the gap) left.
+     *             Note that some enlarging might happen.
      *
      * @param[in]  count  We assume that \p count >= 0. The number of positions
      *                    by which the cursor is shifted left.
      */
     constexpr void move_cursor_left(int64_t count) {
+        [[assume(count >= 0)]];
         auto [gb, ge] = gap_id();
         enlarge_by_at_least(count - gb);
         gap_t new_gap{_buf.begin() + gb - count, _buf.begin() + ge - count};
@@ -237,9 +242,9 @@ class gap_buffer {
 
 
     /**
-     * @brief      Provides the size of content.
+     * @brief      Provides the size of the content.
      *
-     * @return     The size of content.
+     * @return     The size of the content.
      */
     constexpr int64_t size() const { return _buf.size() - _gap.size(); }
 
@@ -266,7 +271,7 @@ class gap_buffer {
     /**
      * @brief       Gets the first element of the content.
      *
-     * @return     A reference to the first element of the content.
+     * @return      A reference to the first element of the content.
      */
     constexpr T& front() {
         if (_gap.empty() || _gap.begin() != _buf.begin()) {
@@ -279,7 +284,9 @@ class gap_buffer {
   public:
     /**
      * @brief      It is a procedure used to insert a view into the content at
-     *             the given position belonging to the range [0, size()].
+     *             the given position belonging to the range [0, size()]. E.g.
+     *             if \p index == 0 then the \p data is pushed front and if
+     *             \p index == size() then the \p data is pushed back.
      *
      * @tparam     V      A view contaning elements of type T.
      *
@@ -301,9 +308,9 @@ class gap_buffer {
 
 
     /**
-     * @brief      Inserts element at the cursor position.
+     * @brief      Inserts element at the given position.
      *
-     * @param[in]  index  A position into which the \p data is inserted.
+     * @param[in]  index  A position into which the \p t is inserted.
      * @param[in]  t      An element to be inserted.
      */
     constexpr void insert(int64_t index, T t) {
@@ -322,9 +329,9 @@ class gap_buffer {
 
 
     /**
-     * @brief      Inserts element at the cursor position.
+     * @brief      Inserts an element of type T at the cursor position.
      *
-     * @param[in]  t     Element to be inserted.
+     * @param[in]  t     An element to be inserted.
      */
     constexpr void insert(T t) { insert(gap_id().first, t); }
 
@@ -364,15 +371,15 @@ class gap_buffer {
 
 
     /**
-     * @brief      Removes a range from the content.
+     * @brief      Removes a range of elements from the content.
      *
      * @param[in]  index  The starting index of the range.
      * @param[in]  count  Might be either nonnegative or negative. If
      *                    it is negative then \p count number of elements to
-     *                    the left of the \p index are removed, that is
+     *                    the left of the \p index is removed, that is
      *                    (\p index + \p count, \p index] is removed.
      *                    Otherwise, \p  count number of elements to the right
-     *                    of the \p index are removed from the content
+     *                    of the \p index is removed from the content
      *                    (i.e. [\p index, \p index + \p count) is removed).
      */
     constexpr void remove(int64_t index, int64_t count) {

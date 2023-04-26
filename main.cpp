@@ -16,7 +16,8 @@ consteval auto test() {
     bool t2 = equal(gb.view(), "gap buffer"sv);
     gb.remove(0, 100);
     bool t3 = gb.empty();
-    gb.push_back("gap buffer"sv).clear();
+    gb.push_back("gap buffer"sv);
+    gb.clear();
     bool t4 = gb.empty();
     gb.push_front("gap buffer"sv);
     bool t5 = equal(gb.view(), "gap buffer"sv);

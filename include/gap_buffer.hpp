@@ -74,11 +74,8 @@ class gap_buffer {
 
   private:
     buf_t _buf{};
-    gap_t _gap{_buf.begin(), _buf.end()};
+    gap_t _gap{_buf};
 
-  protected:
-    static constexpr T NL{'\n'};
-    static constexpr std::basic_string_view<T> NLV{"\n"};
 
   private:
     constexpr int64_t buf_size() const { return _buf.size(); }
@@ -238,7 +235,7 @@ class gap_buffer {
 
     constexpr auto& clear() {
         _buf.clear();
-        _gap = gap_t{_buf.begin(), _buf.end()};
+        _gap = gap_t{_buf};
         return *this;
     }
 };

@@ -76,7 +76,7 @@ void test2() {
 int main(int argc, char const *argv[]) {
     constexpr auto results = test();
     for (auto [id, res] : std::views::enumerate(results)) {
-        std::cout << "test " << id
+        std::cout << "test " << id + 1
                   << (res ? std::string_view{" passed"}
                           : std::string_view{" failed"})
                   << "\n";

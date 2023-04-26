@@ -9,22 +9,43 @@
 #include <vector>
 
 
-template <class T1, class... T>
+/**
+ * @brief      Gets the first type out of variadic templates
+ *
+ * @tparam     T1    first type
+ * @tparam     Ts    the rest
+ */
+template <class T, class... Ts>
 struct first {
-    using type = T1;
+    using type = T;
 };
 
 
-template <class... T>
-requires(sizeof...(T) >= 1)
-using first_t = typename first<T...>::type;
+/**
+ * @brief      Gets the first type out of variadic templates
+ *
+ * @tparam     Ts          Types
+ */
+template <class... Ts>
+requires(sizeof...(Ts) >= 1)
+using first_t = typename first<Ts...>::type;
 
 
+/**
+ * @brief      Checks if all types from Ts.. are the same
+ *
+ * @tparam     Ts          Types
+ */
 template <typename... Ts>
 concept all_same =
     (sizeof...(Ts) >= 1) || (std::same_as<first_t<Ts...>, Ts> && ...);
 
 
+/**
+ * @brief      Concatanation view.
+ *
+ * @tparam     Vs         View types to be concatenated.
+ */
 template <std::ranges::view... Vs>
 requires(sizeof...(Vs) >= 1) && (std::same_as<first_t<Vs...>, Vs> && ...)
 class concat_view : public std::ranges::view_interface<concat_view<Vs...>> {
@@ -39,24 +60,42 @@ class concat_view : public std::ranges::view_interface<concat_view<Vs...>> {
 
 
   public:
+    /**
+     * @brief      Constructs a new instance of concatenation view.
+     *
+     * @param[in]  vs    Views to be concatenated into one.
+     */
     constexpr concat_view(Vs... vs)
         : _vs{vs...},
           _joined_vs{std::views::join(std::ranges::ref_view(_vs))} {}
 
 
+    /**
+     * @brief      Gets iterator to the beginning of this range.
+     *
+     * @return     The iterator to the beginning of this range.
+     */
     constexpr auto begin() const { return _joined_vs.begin(); }
 
 
+    /**
+     * @brief      Gets sentinel of this range.
+     *
+     * @return     The sentinel of this range.
+     */
     constexpr auto end() const { return _joined_vs.end(); }
-
-
-    constexpr auto front() { return _joined_vs.front(); }
-
-
-    constexpr auto back() { return _joined_vs.back(); }
 };
 
 
+/**
+ * @brief      Concatenates provided views into one view.
+ *
+ * @tparam     Vs    Types of views to be concatenated.
+ *
+ * @param[in]  vs    Views to be concatenated.
+ *
+ * @return     Concatenation of \p vs.
+ */
 template <std::ranges::view... Vs>
 requires(sizeof...(Vs) >= 1) && (all_same<Vs...>)
 inline constexpr auto concat(Vs&&... vs) {
@@ -64,6 +103,11 @@ inline constexpr auto concat(Vs&&... vs) {
 }
 
 
+/**
+ * @brief      This class describes a gap buffer.
+ *
+ * @tparam     T     Type held by the buffer.
+ */
 template <typename T>
 class gap_buffer {
   private:
@@ -78,19 +122,40 @@ class gap_buffer {
 
 
   private:
+    /**
+     * @brief      Gets the current buffer size.
+     *
+     * @return     Return the current buffer size.
+     */
     constexpr int64_t buf_size() const { return _buf.size(); }
 
 
+    /**
+     * @brief      Provides the indexes of the beginning and end of the gap.
+     *
+     * @return     std::pair of beginning and end of the gap.
+     */
     constexpr auto gap_id() const {
         auto [gb, ge] = _gap;
         return std::make_pair(gb - _buf.begin(), ge - _buf.begin());
     }
 
 
+    /**
+     * @brief      Provides the current gap size.
+     *
+     * @return     The gap size.
+     */
     constexpr int64_t gap_size() const { return _gap.size(); }
 
 
   private:
+    /**
+     * @brief      Resizes the internal buffer.
+     *
+     * @param[in]  i     The size by which the buffer is to be extended. If
+     *                   negative, nothing happens.
+     */
     constexpr void enlarge_by_at_least(int64_t i) {
         if (i <= 0) { return; }
         int64_t old_buf_size = buf_size();
@@ -104,6 +169,12 @@ class gap_buffer {
     }
 
 
+    /**
+     * @brief      Moves the cursor (the left end of the gap) right.
+     *
+     * @param[in]  count  We assume that \p count >= 0. The number of positions
+     *                    by which the cursor is shifted right.
+     */
     constexpr void move_cursor_right(int64_t count) {
         auto [gb, ge] = gap_id();
         enlarge_by_at_least(ge + count - buf_size());
@@ -113,6 +184,12 @@ class gap_buffer {
     }
 
 
+    /**
+     * @brief      Moves the cursor (the left end of the gap) left.
+     *
+     * @param[in]  count  We assume that \p count >= 0. The number of positions
+     *                    by which the cursor is shifted left.
+     */
     constexpr void move_cursor_left(int64_t count) {
         auto [gb, ge] = gap_id();
         enlarge_by_at_least(count - gb);
@@ -123,6 +200,11 @@ class gap_buffer {
     }
 
 
+    /**
+     * @brief      Moves the cursor (the left end of the gap) to a given index.
+     *
+     * @param[in]  index  The index to which cursor is moved.
+     */
     constexpr void move_cursor_to(int64_t index) {
         auto [gb, ge] = gap_id();
         if (index == gb) return;
@@ -135,10 +217,18 @@ class gap_buffer {
 
 
   public:
+    /**
+     * @brief      Constructs a new instance of gap buffer.
+     */
     constexpr gap_buffer() {}
 
 
   public:
+    /**
+     * @brief      Provides a view over the content.
+     *
+     * @return     The view over the content.
+     */
     constexpr auto view() {
         auto [gb, ge] = gap_id();
         return concat(std::ranges::subrange{_buf.begin(), _buf.begin() + gb},
@@ -146,73 +236,146 @@ class gap_buffer {
     }
 
 
+    /**
+     * @brief      Provides the size of content.
+     *
+     * @return     The size of content.
+     */
     constexpr int64_t size() const { return _buf.size() - _gap.size(); }
 
 
+    /**
+     * @brief      Checks if the content is empty.
+     *
+     * @return     True iff there is no content.
+     */
     constexpr int64_t empty() const { return (size() == 0); }
 
 
+    /**
+     * @brief      Gets the last element of the content.
+     *
+     * @return     A reference to the last element of the content.
+     */
     constexpr T& back() {
         if (_gap.empty() || _gap.end() != _buf.end()) { return _buf.back(); }
         return *(_gap.begin() - 1);
     }
 
 
+    /**
+     * @brief       Gets the first element of the content.
+     *
+     * @return     A reference to the first element of the content.
+     */
     constexpr T& front() {
         if (_gap.empty() || _gap.begin() != _buf.begin()) {
             return _buf.front();
         }
-        return *(_gap.end() + 1);
+        return *(_gap.end());
     }
 
 
   public:
-    // It is a procedure used to insert character into the text at a given
-    // position in the range [0, size()].
+    /**
+     * @brief      It is a procedure used to insert a view into the content at
+     *             the given position belonging to the range [0, size()].
+     *
+     * @tparam     V      A view contaning elements of type T.
+     *
+     * @param[in]  index  A position into which the \p data is inserted.
+     * @param[in]  data   Data to be inserted.
+     *
+     */
     template <std::ranges::view V>
     requires(std::same_as<std::ranges::range_value_t<V>, T>) &&
             (std::ranges::sized_range<V>)
-    constexpr auto& insert(int64_t index, V data) {
+    constexpr void insert(int64_t index, V data) {
         if !consteval { assert(0 <= index && index <= size()); }
         enlarge_by_at_least(data.size());
         move_cursor_to(index);
         auto [gb, ge] = gap_id();
         std::ranges::copy(data, _buf.begin() + gb);
         _gap = gap_t(_buf.begin() + gb + data.size(), _buf.begin() + ge);
-        return *this;
     }
 
 
-    constexpr auto& insert(int64_t index, T t) {
-        return insert(index, std::views::single(t));
+    /**
+     * @brief      Inserts element at the cursor position.
+     *
+     * @param[in]  index  A position into which the \p data is inserted.
+     * @param[in]  t      An element to be inserted.
+     */
+    constexpr void insert(int64_t index, T t) {
+        insert(index, std::views::single(t));
     }
 
 
-    constexpr auto& insert(std::ranges::view auto data) {
-        return insert(gap_id().first, data);
+    /**
+     * @brief      Inserts the data of view type at the cursor position.
+     *
+     * @param[in]  data  Data to be inserted.
+     */
+    constexpr void insert(std::ranges::view auto data) {
+        insert(gap_id().first, data);
     }
 
 
-    constexpr auto& insert(T t) { return insert(gap_id().first, t); }
+    /**
+     * @brief      Inserts element at the cursor position.
+     *
+     * @param[in]  t     Element to be inserted.
+     */
+    constexpr void insert(T t) { insert(gap_id().first, t); }
 
 
-    constexpr auto& push_front(std::ranges::view auto data) {
-        return insert(0, data);
+    /**
+     * @brief      Pushes a view of data at the front of the content.
+     *
+     * @param[in]  data     Data to be inserted.
+     */
+    constexpr void push_front(std::ranges::view auto data) { insert(0, data); }
+
+
+    /**
+     * @brief      Pushes an element at the front of the content.
+     *
+     * @param[in]  t     Element to be inserted.
+     */
+    constexpr void push_front(T t) { insert(0, t); }
+
+
+    /**
+     * @brief      Pushes a view of data at the end of the content.
+     *
+     * @param[in]  data  Data to be inserted.
+     */
+    constexpr void push_back(std::ranges::view auto data) {
+        insert(size(), data);
     }
 
 
-    constexpr auto& push_front(T t) { return insert(0, t); }
+    /**
+     * @brief      Pushes an element at the end of the content.
+     *
+     * @param[in]  t     Element to be pushed.
+     */
+    constexpr void push_back(T t) { return insert(size(), t); }
 
 
-    constexpr auto& push_back(std::ranges::view auto data) {
-        return insert(size(), data);
-    }
-
-
-    constexpr auto& push_back(T t) { return insert(size(), t); }
-
-
-    constexpr auto& remove(int64_t index, int64_t count) {
+    /**
+     * @brief      Removes a range from the content.
+     *
+     * @param[in]  index  The starting index of the range.
+     * @param[in]  count  Might be either nonnegative or negative. If
+     *                    it is negative then \p count number of elements to
+     *                    the left of the \p index are removed, that is
+     *                    (\p index + \p count, \p index] is removed.
+     *                    Otherwise, \p  count number of elements to the right
+     *                    of the \p index are removed from the content
+     *                    (i.e. [\p index, \p index + \p count) is removed).
+     */
+    constexpr void remove(int64_t index, int64_t count) {
         if (count >= 0) {
             count = std::min(count, size() - index);
             move_cursor_to(index + count);
@@ -221,21 +384,33 @@ class gap_buffer {
             move_cursor_to(index);
         }
         _gap.advance(-count);
-        return *this;
     }
 
 
-    constexpr auto& remove_prefix(int64_t count) { return remove(0, count); }
+    /**
+     * @brief      Removes a prefix.
+     *
+     * @param[in]  count  The number of elements to be removed from the
+     *                    beginning of the content.
+     */
+    constexpr void remove_prefix(int64_t count) { remove(0, count); }
 
 
-    constexpr auto& remove_suffix(int64_t count) {
-        return remove(size(), -count);
-    }
+    /**
+     * @brief      Removes a suffix.
+     *
+     * @param[in]  count  The number of elements to be removed from the
+     *                    end of the content.
+     */
+    constexpr void remove_suffix(int64_t count) { remove(size(), -count); }
 
 
-    constexpr auto& clear() {
+    /**
+     * @brief      Clears the content. After this operation the size of content
+     *             is zero.
+     */
+    constexpr void clear() {
         _buf.clear();
         _gap = gap_t{_buf};
-        return *this;
     }
 };

@@ -104,7 +104,21 @@ inline constexpr auto concat(Vs&&... vs) {
 
 
 /**
- * @brief      This class describes a gap buffer.
+ * @brief      This class describes a gap buffer. Recall that the content of a
+ *             gap buffer consists of everything inside the buffer
+ *             which is outside the gap. There is one important
+ *             notion related to a gap buffer, namely a cursor. Intuitively,
+ *             a cursor is just the left end of the gap. More
+ *             precisely, if gap buffer is of the form
+ *             _*_*_<gap>_*_*_ where * form the content of the buffer and _ are
+ *             possible positions of the cursor (so think about these as about
+ *             places between elements of the buffer!)
+ *             then the current position of the cursor is _ occuring just
+ *             before <gap>. In particular, the cursor position
+ *             can be any of the range [0, content.size()]. E.g. if the
+ *             current position of the cursor is 0 (content.size() resp.)
+ *             and we insert element to the gap buffer then this element is
+ *             pushed front (pushed back resp.).
  *
  * @tparam     T     The type held by the buffer.
  */
